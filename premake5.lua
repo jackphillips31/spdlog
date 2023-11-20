@@ -1,16 +1,26 @@
 project "spdlog"
-	kind "None"
+	kind "StaticLib"
 	language "C++"
-	cppdialect "C++11"
+	cppdialect "C++17"
+	staticruntime "on"
+
+	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
+	objdir ("bin/" .. outputdir .. "/obj")
 
 	files
 	{
-		"include/spdlog/**.h"
+		"include/spdlog/**.h",
+		"src/**.cpp"
 	}
 
 	includedirs
 	{
 		"include"
+	}
+
+	defines
+	{
+		"_CRT_SECURE_NO_WARNINGS"
 	}
 
 	filter "system:windows"
