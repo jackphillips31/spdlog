@@ -10,6 +10,7 @@
 #include <thread>
 
 #include "spdlog/details/null_mutex.h"
+#include "spdlog/details/os.h"
 #include "spdlog/fmt/fmt.h"
 #include "spdlog/sinks/base_sink.h"
 

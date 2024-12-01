@@ -34,7 +34,7 @@ void ansicolor_sink<Mutex>::set_color(level color_level, string_view_t color) {
 }
 
 template <typename Mutex>
-bool ansicolor_sink<Mutex>::should_color() {
+bool ansicolor_sink<Mutex>::should_color() const {
     return should_do_colors_;
 }
 
@@ -45,8 +45,7 @@ void ansicolor_sink<Mutex>::set_color_mode(color_mode mode) {
             should_do_colors_ = true;
             return;
         case color_mode::automatic:
-            should_do_colors_ =
-                details::os::in_terminal(target_file_) && details::os::is_color_terminal();
+            should_do_colors_ = details::os::in_terminal(target_file_) && details::os::is_color_terminal();
             return;
         case color_mode::never:
             should_do_colors_ = false;
@@ -88,12 +87,12 @@ void ansicolor_sink<Mutex>::flush_() {
 
 template <typename Mutex>
 void ansicolor_sink<Mutex>::print_ccode_(const string_view_t color_code) {
-    fwrite(color_code.data(), sizeof(char), color_code.size(), target_file_);
+    details::os::fwrite_bytes(color_code.data(), color_code.size(), target_file_);
 }
 
 template <typename Mutex>
 void ansicolor_sink<Mutex>::print_range_(const memory_buf_t &formatted, size_t start, size_t end) {
-    fwrite(formatted.data() + start, sizeof(char), end - start, target_file_);
+    details::os::fwrite_bytes(formatted.data() + start, end - start, target_file_);
 }
 
 template <typename Mutex>

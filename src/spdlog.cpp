@@ -12,13 +12,13 @@
 
 namespace spdlog {
 
-void initialize_logger(std::shared_ptr<logger> logger) {
-    details::registry::instance().initialize_logger(std::move(logger));
-}
+void initialize_logger(std::shared_ptr<logger> logger) { details::registry::instance().initialize_logger(std::move(logger)); }
 
-std::shared_ptr<logger> get(const std::string &name) {
-    return details::registry::instance().get(name);
-}
+std::shared_ptr<logger> get(const std::string &name) { return details::registry::instance().get(name); }
+
+std::shared_ptr<logger> get(std::string_view name) { return details::registry::instance().get(name); }
+
+std::shared_ptr<logger> get(const char *name) { return details::registry::instance().get(name); }
 
 void set_formatter(std::unique_ptr<spdlog::formatter> formatter) {
     details::registry::instance().set_formatter(std::move(formatter));
@@ -36,17 +36,11 @@ void set_level(level level) { details::registry::instance().set_level(level); }
 
 void flush_on(level level) { details::registry::instance().flush_on(level); }
 
-void set_error_handler(void (*handler)(const std::string &msg)) {
-    details::registry::instance().set_error_handler(handler);
-}
+void set_error_handler(void (*handler)(const std::string &msg)) { details::registry::instance().set_error_handler(handler); }
 
-void register_logger(std::shared_ptr<logger> logger) {
-    details::registry::instance().register_logger(std::move(logger));
-}
+void register_logger(std::shared_ptr<logger> logger) { details::registry::instance().register_logger(std::move(logger)); }
 
-void apply_all(const std::function<void(std::shared_ptr<logger>)> &fun) {
-    details::registry::instance().apply_all(fun);
-}
+void apply_all(const std::function<void(std::shared_ptr<logger>)> &fun) { details::registry::instance().apply_all(fun); }
 
 void drop(const std::string &name) { details::registry::instance().drop(name); }
 
@@ -58,9 +52,7 @@ void set_automatic_registration(bool automatic_registration) {
     details::registry::instance().set_automatic_registration(automatic_registration);
 }
 
-std::shared_ptr<spdlog::logger> default_logger() {
-    return details::registry::instance().default_logger();
-}
+std::shared_ptr<spdlog::logger> default_logger() { return details::registry::instance().default_logger(); }
 
 spdlog::logger *default_logger_raw() { return details::registry::instance().get_default_raw(); }
 

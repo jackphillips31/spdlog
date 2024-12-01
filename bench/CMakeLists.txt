@@ -1,6 +1,6 @@
 # Copyright(c) 2019 spdlog authors Distributed under the MIT License (http://opensource.org/licenses/MIT)
 
-cmake_minimum_required(VERSION 3.11)
+cmake_minimum_required(VERSION 3.14)
 project(spdlog_bench CXX)
 
 if(NOT TARGET spdlog)
@@ -10,6 +10,7 @@ endif()
 
 find_package(Threads REQUIRED)
 find_package(benchmark CONFIG)
+
 if(NOT benchmark_FOUND)
     message(STATUS "Using CMake Version ${CMAKE_VERSION}")
     # User can fetch googlebenchmark
@@ -21,6 +22,7 @@ if(NOT benchmark_FOUND)
     # Do not build and run googlebenchmark tests
     FetchContent_Declare(googlebenchmark GIT_REPOSITORY https://github.com/google/benchmark.git GIT_TAG v1.6.0)
     FetchContent_MakeAvailable(googlebenchmark)
+    set_target_properties(benchmark PROPERTIES FOLDER "third-party")
 endif()
 
 add_executable(bench bench.cpp)
@@ -35,9 +37,3 @@ target_link_libraries(latency PRIVATE benchmark::benchmark spdlog::spdlog)
 
 add_executable(formatter-bench formatter-bench.cpp)
 target_link_libraries(formatter-bench PRIVATE benchmark::benchmark spdlog::spdlog)
-
-# copy dll to the executable folder for msvc
-if(MSVC AND (SPDLOG_BUILD_SHARED OR BUILD_SHARED_LIBS))
-    add_custom_command(TARGET latency POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:spdlog>
-                                                         $<TARGET_FILE_DIR:latency>)
-endif()

@@ -14,8 +14,8 @@
 #include <string>
 
 #include "../common.h"
-#include "os.h"
-#include "windows_include.h"
+#include "./os.h"
+#include "./windows_include.h"
 
 #if defined(_MSC_VER)
     #pragma comment(lib, "Ws2_32.lib")
@@ -25,7 +25,7 @@
 
 namespace spdlog {
 namespace details {
-class udp_client {
+class udp_client_unix {
     static constexpr int TX_BUFFER_SIZE = 1024 * 10;
     SOCKET socket_ = INVALID_SOCKET;
     sockaddr_in addr_ = {};
@@ -40,9 +40,8 @@ class udp_client {
 
     static void throw_winsock_error_(const std::string &msg, int last_error) {
         char buf[512];
-        ::FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL,
-                         last_error, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), buf,
-                         (sizeof(buf) / sizeof(char)), NULL);
+        ::FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, last_error,
+                         MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), buf, (sizeof(buf) / sizeof(char)), NULL);
 
         throw_spdlog_ex(fmt_lib::format("udp_sink - {}: {}", msg, buf));
     }
@@ -56,7 +55,7 @@ class udp_client {
     }
 
 public:
-    udp_client(const std::string &host, uint16_t port) {
+    udp_client_unix(const std::string &host, uint16_t port) {
         init_winsock_();
 
         addr_.sin_family = PF_INET;
@@ -76,22 +75,21 @@ public:
         }
 
         int option_value = TX_BUFFER_SIZE;
-        if (::setsockopt(socket_, SOL_SOCKET, SO_SNDBUF,
-                         reinterpret_cast<const char *>(&option_value), sizeof(option_value)) < 0) {
+        if (::setsockopt(socket_, SOL_SOCKET, SO_SNDBUF, reinterpret_cast<const char *>(&option_value), sizeof(option_value)) <
+            0) {
             int last_error = ::WSAGetLastError();
             cleanup_();
             throw_winsock_error_("error: setsockopt(SO_SNDBUF) Failed!", last_error);
         }
     }
 
-    ~udp_client() { cleanup_(); }
+    ~udp_client_unix() { cleanup_(); }
 
     SOCKET fd() const { return socket_; }
 
     void send(const char *data, size_t n_bytes) {
         socklen_t tolen = sizeof(struct sockaddr);
-        if (::sendto(socket_, data, static_cast<int>(n_bytes), 0, (struct sockaddr *)&addr_,
-                     tolen) == -1) {
+        if (::sendto(socket_, data, static_cast<int>(n_bytes), 0, (struct sockaddr *)&addr_, tolen) == -1) {
             throw_spdlog_ex("sendto(2) failed", errno);
         }
     }

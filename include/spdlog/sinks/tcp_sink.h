@@ -5,11 +5,11 @@
 
 #include "../common.h"
 #include "../details/null_mutex.h"
-#include "base_sink.h"
+#include "./base_sink.h"
 #ifdef _WIN32
-    #include "../details/tcp_client-windows.h"
+    #include "../details/tcp_client_windows.h"
 #else
-    #include "../details/tcp_client.h"
+    #include "../details/tcp_client_unix.h"
 #endif
 
 #include <chrono>
@@ -39,7 +39,7 @@ struct tcp_sink_config {
 };
 
 template <typename Mutex>
-class tcp_sink : public spdlog::sinks::base_sink<Mutex> {
+class tcp_sink final : public spdlog::sinks::base_sink<Mutex> {
 public:
     // connect to tcp host/port or throw if failed
     // host can be hostname or ip address
@@ -65,7 +65,7 @@ protected:
 
     void flush_() override {}
     tcp_sink_config config_;
-    details::tcp_client client_;
+    details::tcp_client_unix client_;
 };
 
 using tcp_sink_mt = tcp_sink<std::mutex>;

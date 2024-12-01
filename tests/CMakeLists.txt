@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.11)
+cmake_minimum_required(VERSION 3.14)
 project(spdlog_utests CXX)
 
 if(NOT TARGET spdlog)
@@ -19,8 +19,12 @@ if(Catch2_FOUND)
 else()
     message(STATUS "Bundled version of Catch will be downloaded and used.")
     include(FetchContent)
-    FetchContent_Declare(Catch2 GIT_REPOSITORY https://github.com/catchorg/Catch2.git GIT_TAG v3.3.2)
+    FetchContent_Declare(
+        Catch2 GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+        GIT_TAG 53d0d913a422d356b23dd927547febdf69ee9081 # v3.5.0
+    )
     FetchContent_MakeAvailable(Catch2)
+    set_target_properties(Catch2 Catch2WithMain PROPERTIES FOLDER "third-party")
 endif()
 
 set(SPDLOG_UTESTS_SOURCES
@@ -46,23 +50,18 @@ set(SPDLOG_UTESTS_SOURCES
     test_circular_q.cpp
     test_ringbuffer_sink.cpp
     test_source_location.cpp
+    test_no_source_location.cpp
     test_log_level.cpp
-    test_include_sinks.cpp)
+    test_include_sinks.cpp
+    test_bin_to_hex.cpp
+    test_errors.cpp)
 
 if(WIN32)
     list(APPEND SPDLOG_UTESTS_SOURCES test_eventlog.cpp)
 endif()
 
-if(NOT SPDLOG_NO_EXCEPTIONS)
-    list(APPEND SPDLOG_UTESTS_SOURCES test_errors.cpp)
-endif()
-
 if(systemd_FOUND)
     list(APPEND SPDLOG_UTESTS_SOURCES test_systemd.cpp)
-endif()
-
-if(NOT SPDLOG_USE_STD_FORMAT)
-    list(APPEND SPDLOG_UTESTS_SOURCES test_bin_to_hex.cpp)
 endif()
 
 enable_testing()
@@ -76,7 +75,9 @@ function(spdlog_prepare_test test_target spdlog_lib)
     endif()
     target_link_libraries(${test_target} PRIVATE Catch2::Catch2WithMain)
     if(SPDLOG_SANITIZE_ADDRESS)
-        spdlog_enable_sanitizer(${test_target})
+        spdlog_enable_addr_sanitizer(${test_target})
+    elseif(SPDLOG_SANITIZE_THREAD)
+        spdlog_enable_thread_sanitizer(${test_target})
     endif()
     add_test(NAME ${test_target} COMMAND ${test_target})
     set_tests_properties(${test_target} PROPERTIES RUN_SERIAL ON)
@@ -84,12 +85,4 @@ endfunction()
 
 if(SPDLOG_BUILD_TESTS OR SPDLOG_BUILD_ALL)
     spdlog_prepare_test(spdlog-utests spdlog::spdlog)
-
-    # copy dll to the executable folder for msvc
-    if(MSVC AND (SPDLOG_BUILD_SHARED OR BUILD_SHARED_LIBS))
-        add_custom_command(
-            TARGET spdlog-utests POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:spdlog>
-                                                    $<TARGET_FILE_DIR:spdlog-utests>)
-    endif()
-
 endif()

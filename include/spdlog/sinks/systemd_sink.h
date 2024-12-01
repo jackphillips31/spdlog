@@ -8,7 +8,7 @@
 #include "../details/null_mutex.h"
 #include "../details/os.h"
 #include "../details/synchronous_factory.h"
-#include "base_sink.h"
+#include "./base_sink.h"
 #ifndef SD_JOURNAL_SUPPRESS_LOCATION
     #define SD_JOURNAL_SUPPRESS_LOCATION
 #endif
@@ -67,25 +67,15 @@ protected:
         // Do not send source location if not available
         if (msg.source.empty()) {
             // Note: function call inside '()' to avoid macro expansion
-            err = (sd_journal_send)("MESSAGE=%.*s", static_cast<int>(length), payload.data(),
-                                    "PRIORITY=%d", syslog_level(msg.log_level),
-#ifndef SPDLOG_NO_THREAD_ID
-                                    "TID=%zu", msg.thread_id,
-#endif
-                                    "SYSLOG_IDENTIFIER=%.*s",
-                                    static_cast<int>(syslog_identifier.size()),
-                                    syslog_identifier.data(), nullptr);
+            err = (sd_journal_send)("MESSAGE=%.*s", static_cast<int>(length), payload.data(), "PRIORITY=%d",
+                                    syslog_level(msg.log_level), "TID=%zu", msg.thread_id, "SYSLOG_IDENTIFIER=%.*s",
+                                    static_cast<int>(syslog_identifier.size()), syslog_identifier.data(), nullptr);
         } else {
-            err = (sd_journal_send)("MESSAGE=%.*s", static_cast<int>(length), payload.data(),
-                                    "PRIORITY=%d", syslog_level(msg.log_level),
-#ifndef SPDLOG_NO_THREAD_ID
-                                    "TID=%zu", msg.thread_id,
-#endif
-                                    "SYSLOG_IDENTIFIER=%.*s",
-                                    static_cast<int>(syslog_identifier.size()),
-                                    syslog_identifier.data(), "CODE_FILE=%s", msg.source.filename,
-                                    "CODE_LINE=%d", msg.source.line, "CODE_FUNC=%s",
-                                    msg.source.funcname, nullptr);
+            err = (sd_journal_send)("MESSAGE=%.*s", static_cast<int>(length), payload.data(), "PRIORITY=%d",
+                                    syslog_level(msg.log_level), "TID=%zu", msg.thread_id, "SYSLOG_IDENTIFIER=%.*s",
+                                    static_cast<int>(syslog_identifier.size()), syslog_identifier.data(), "CODE_FILE=%s",
+                                    msg.source.filename, "CODE_LINE=%d", msg.source.line, "CODE_FUNC=%s", msg.source.funcname,
+                                    nullptr);
         }
 
         if (err) {
