@@ -4,7 +4,6 @@
 #include "spdlog/details/registry.h"
 
 #include "spdlog/common.h"
-#include "spdlog/details/periodic_worker.h"
 #include "spdlog/logger.h"
 #include "spdlog/pattern_formatter.h"
 
@@ -13,15 +12,17 @@
     #ifdef _WIN32
         #include "spdlog/sinks/wincolor_sink.h"
     #else
+
         #include "spdlog/sinks/ansicolor_sink.h"
+
     #endif
 #endif  // SPDLOG_DISABLE_DEFAULT_LOGGER
 
-#include <chrono>
-#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
+
+static constexpr size_t small_map_threshold = 10;
 
 namespace spdlog {
 namespace details {
@@ -35,7 +36,6 @@ registry::registry()
     #else
     auto color_sink = std::make_shared<sinks::ansicolor_stdout_sink_mt>();
     #endif
-
     const char *default_logger_name = "";
     default_logger_ = std::make_shared<spdlog::logger>(default_logger_name, std::move(color_sink));
     loggers_[default_logger_name] = default_logger_;
@@ -70,11 +70,39 @@ void registry::initialize_logger(std::shared_ptr<logger> new_logger) {
     }
 }
 
+// if the map is small do a sequential search, otherwise use the standard find()
 std::shared_ptr<logger> registry::get(const std::string &logger_name) {
     std::lock_guard<std::mutex> lock(logger_map_mutex_);
+    if (loggers_.size() <= small_map_threshold) {
+        for (const auto &[key, val] : loggers_) {
+            if (logger_name == key) {
+                return val;
+            }
+        }
+        return nullptr;
+    }
     auto found = loggers_.find(logger_name);
     return found == loggers_.end() ? nullptr : found->second;
 }
+
+// if the map is small do a sequential search and avoid creating string for find(logger_name)
+// otherwise use the standard find()
+std::shared_ptr<logger> registry::get(std::string_view logger_name) {
+    std::lock_guard<std::mutex> lock(logger_map_mutex_);
+    if (loggers_.size() <= small_map_threshold) {
+        for (const auto &[key, val] : loggers_) {
+            if (logger_name == key) {
+                return val;
+            }
+        }
+        return nullptr;
+    }
+    // otherwise use the normal map lookup
+    const auto found = loggers_.find(std::string(logger_name));
+    return found == loggers_.end() ? nullptr : found->second;
+}
+
+std::shared_ptr<logger> registry::get(const char *logger_name) { return get(std::string_view(logger_name)); }
 
 std::shared_ptr<logger> registry::default_logger() {
     std::lock_guard<std::mutex> lock(logger_map_mutex_);
@@ -85,16 +113,12 @@ std::shared_ptr<logger> registry::default_logger() {
 // To be used directly by the spdlog default api (e.g. spdlog::info)
 // This make the default API faster, but cannot be used concurrently with set_default_logger().
 // e.g do not call set_default_logger() from one thread while calling spdlog::info() from another.
-logger *registry::get_default_raw() { return default_logger_.get(); }
+logger *registry::get_default_raw() const { return default_logger_.get(); }
 
 // set default logger.
 // default logger is stored in default_logger_ (for faster retrieval) and in the loggers_ map.
 void registry::set_default_logger(std::shared_ptr<logger> new_default_logger) {
     std::lock_guard<std::mutex> lock(logger_map_mutex_);
-    // remove previous default logger from the map
-    if (default_logger_ != nullptr) {
-        loggers_.erase(default_logger_->name());
-    }
     if (new_default_logger != nullptr) {
         loggers_[new_default_logger->name()] = new_default_logger;
     }

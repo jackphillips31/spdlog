@@ -5,10 +5,10 @@
 
 #include <cstdio>
 
-#include "../details/synchronous_factory.h"
 #include "../details/null_mutex.h"
-#include "base_sink.h"
-#include "sink.h"
+#include "../details/synchronous_factory.h"
+#include "./base_sink.h"
+#include "./sink.h"
 
 #ifdef _WIN32
     #include "../details/windows_include.h"
@@ -36,17 +36,17 @@ private:
     void flush_() override;
 #ifdef _WIN32
     HANDLE handle_;
-#endif  // WIN32
+#endif  // _WIN32
 };
 
 template <typename Mutex>
-class stdout_sink : public stdout_sink_base<Mutex> {
+class stdout_sink final : public stdout_sink_base<Mutex> {
 public:
     stdout_sink();
 };
 
 template <typename Mutex>
-class stderr_sink : public stdout_sink_base<Mutex> {
+class stderr_sink final : public stdout_sink_base<Mutex> {
 public:
     stderr_sink();
 };

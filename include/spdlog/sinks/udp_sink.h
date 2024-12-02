@@ -5,11 +5,11 @@
 
 #include "../common.h"
 #include "../details/null_mutex.h"
-#include "base_sink.h"
+#include "./base_sink.h"
 #ifdef _WIN32
-    #include "../details/udp_client-windows.h"
+    #include "../details/udp_client_windows.h"
 #else
-    #include "../details/udp_client.h"
+    #include "../details/udp_client_unix.h"
 #endif
 
 #include <chrono>
@@ -33,7 +33,7 @@ struct udp_sink_config {
 };
 
 template <typename Mutex>
-class udp_sink : public spdlog::sinks::base_sink<Mutex> {
+class udp_sink final : public spdlog::sinks::base_sink<Mutex> {
 public:
     // host can be hostname or ip address
     explicit udp_sink(udp_sink_config sink_config)
@@ -49,7 +49,7 @@ protected:
     }
 
     void flush_() override {}
-    details::udp_client client_;
+    details::udp_client_unix client_;
 };
 
 using udp_sink_mt = udp_sink<std::mutex>;
@@ -61,8 +61,7 @@ using udp_sink_st = udp_sink<spdlog::details::null_mutex>;
 // factory functions
 //
 template <typename Factory = spdlog::synchronous_factory>
-inline std::shared_ptr<logger> udp_logger_mt(const std::string &logger_name,
-                                             sinks::udp_sink_config skin_config) {
+inline std::shared_ptr<logger> udp_logger_mt(const std::string &logger_name, sinks::udp_sink_config skin_config) {
     return Factory::template create<sinks::udp_sink_mt>(logger_name, skin_config);
 }
 

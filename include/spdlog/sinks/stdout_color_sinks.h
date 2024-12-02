@@ -4,9 +4,9 @@
 #pragma once
 
 #ifdef _WIN32
-    #include "wincolor_sink.h"
+    #include "./wincolor_sink.h"
 #else
-    #include "ansicolor_sink.h"
+    #include "./ansicolor_sink.h"
 #endif
 
 #include "../async.h"
@@ -29,19 +29,15 @@ using stderr_color_sink_st = ansicolor_stderr_sink_st;
 
 // logger factory functions
 template <typename Factory = spdlog::synchronous_factory>
-std::shared_ptr<logger> stdout_color_mt(const std::string &logger_name,
-                                        color_mode mode = color_mode::automatic);
+std::shared_ptr<logger> stdout_color_mt(const std::string &logger_name, color_mode mode = color_mode::automatic);
 
 template <typename Factory = spdlog::synchronous_factory>
-std::shared_ptr<logger> stdout_color_st(const std::string &logger_name,
-                                        color_mode mode = color_mode::automatic);
+std::shared_ptr<logger> stdout_color_st(const std::string &logger_name, color_mode mode = color_mode::automatic);
 
 template <typename Factory = spdlog::synchronous_factory>
-std::shared_ptr<logger> stderr_color_mt(const std::string &logger_name,
-                                        color_mode mode = color_mode::automatic);
+std::shared_ptr<logger> stderr_color_mt(const std::string &logger_name, color_mode mode = color_mode::automatic);
 
 template <typename Factory = spdlog::synchronous_factory>
-std::shared_ptr<logger> stderr_color_st(const std::string &logger_name,
-                                        color_mode mode = color_mode::automatic);
+std::shared_ptr<logger> stderr_color_st(const std::string &logger_name, color_mode mode = color_mode::automatic);
 
 }  // namespace spdlog

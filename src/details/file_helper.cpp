@@ -5,8 +5,7 @@
 
 #include <cerrno>
 #include <cstdio>
-#include <string>
-#include <tuple>
+#include <utility>
 
 #include "spdlog/common.h"
 #include "spdlog/details/os.h"
@@ -14,8 +13,8 @@
 namespace spdlog {
 namespace details {
 
-file_helper::file_helper(const file_event_handlers &event_handlers)
-    : event_handlers_(event_handlers) {}
+file_helper::file_helper(file_event_handlers event_handlers)
+    : event_handlers_(std::move(event_handlers)) {}
 
 file_helper::~file_helper() { close(); }
 
@@ -23,8 +22,8 @@ void file_helper::open(const filename_t &fname, bool truncate) {
     close();
     filename_ = fname;
 
-    auto *mode = SPDLOG_FILENAME_T("ab");
-    auto *trunc_mode = SPDLOG_FILENAME_T("wb");
+    const auto *mode = SPDLOG_FILENAME_T("ab");
+    const auto *trunc_mode = SPDLOG_FILENAME_T("wb");
 
     if (event_handlers_.before_open) {
         event_handlers_.before_open(filename_);
@@ -37,7 +36,7 @@ void file_helper::open(const filename_t &fname, bool truncate) {
             // opening the actual log-we-write-to in "ab" mode, since that
             // interacts more politely with eternal processes that might
             // rotate/truncate the file underneath us.
-            std::FILE *tmp;
+            std::FILE *tmp = nullptr;
             if (os::fopen_s(&tmp, fname, trunc_mode)) {
                 continue;
             }
@@ -53,8 +52,7 @@ void file_helper::open(const filename_t &fname, bool truncate) {
         details::os::sleep_for_millis(open_interval_);
     }
 
-    throw_spdlog_ex("Failed opening file " + os::filename_to_str(filename_) + " for writing",
-                    errno);
+    throw_spdlog_ex("Failed opening file " + os::filename_to_str(filename_) + " for writing", errno);
 }
 
 void file_helper::reopen(bool truncate) {
@@ -64,13 +62,13 @@ void file_helper::reopen(bool truncate) {
     this->open(filename_, truncate);
 }
 
-void file_helper::flush() {
+void file_helper::flush() const {
     if (std::fflush(fd_) != 0) {
         throw_spdlog_ex("Failed flush to file " + os::filename_to_str(filename_), errno);
     }
 }
 
-void file_helper::sync() {
+void file_helper::sync() const {
     if (!os::fsync(fd_)) {
         throw_spdlog_ex("Failed to fsync file " + os::filename_to_str(filename_), errno);
     }
@@ -91,10 +89,11 @@ void file_helper::close() {
     }
 }
 
-void file_helper::write(const memory_buf_t &buf) {
-    size_t msg_size = buf.size();
-    auto data = buf.data();
-    if (std::fwrite(data, 1, msg_size, fd_) != msg_size) {
+void file_helper::write(const memory_buf_t &buf) const {
+    if (fd_ == nullptr) return;
+    const size_t msg_size = buf.size();
+    const auto *data = buf.data();
+    if (!os::fwrite_bytes(data, msg_size, fd_)) {
         throw_spdlog_ex("Failed writing to file " + os::filename_to_str(filename_), errno);
     }
 }

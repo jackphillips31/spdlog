@@ -15,29 +15,25 @@
 // formatted data, and support for different format per sink.
 
 #include <cassert>
+#include <iterator>
 #include <vector>
 
-#include "common.h"
-#include "details/log_msg.h"
-#include "sinks/sink.h"
+#include "./common.h"
+#include "./details/log_msg.h"
+#include "./sinks/sink.h"
 
-#ifndef SPDLOG_NO_EXCEPTIONS
-    #define SPDLOG_LOGGER_CATCH(location)                                                         \
-        catch (const std::exception &ex) {                                                        \
-            if (!location.empty()) {                                                              \
-                err_handler_(                                                                     \
-                    fmt_lib::format("{} [{}({})]", ex.what(), location.filename, location.line)); \
-            } else {                                                                              \
-                err_handler_(ex.what());                                                          \
-            }                                                                                     \
-        }                                                                                         \
-        catch (...) {                                                                             \
-            err_handler_("Rethrowing unknown exception in logger");                               \
-            throw;                                                                                \
-        }
-#else
-    #define SPDLOG_LOGGER_CATCH(location)
-#endif
+#define SPDLOG_LOGGER_CATCH(location)                                                                                     \
+    catch (const std::exception &ex) {                                                                                    \
+        if (!location.empty()) {                                                                                          \
+            err_handler_(fmt_lib::format(SPDLOG_FMT_STRING("{} [{}({})]"), ex.what(), location.filename, location.line)); \
+        } else {                                                                                                          \
+            err_handler_(ex.what());                                                                                      \
+        }                                                                                                                 \
+    }                                                                                                                     \
+    catch (...) {                                                                                                         \
+        err_handler_("Rethrowing unknown exception in logger");                                                           \
+        throw;                                                                                                            \
+    }
 
 namespace spdlog {
 
@@ -66,29 +62,19 @@ public:
 
     virtual ~logger() = default;
 
-    // log functions
     template <typename... Args>
     void log(source_loc loc, level lvl, format_string_t<Args...> fmt, Args &&...args) {
         if (should_log(lvl)) {
-            log_with_format_(loc, lvl, details::to_string_view(fmt), std::forward<Args>(args)...);
+            log_with_format_(loc, lvl, fmt, std::forward<Args>(args)...);
         }
     }
 
     template <typename... Args>
     void log(level lvl, format_string_t<Args...> fmt, Args &&...args) {
         if (should_log(lvl)) {
-            log_with_format_(source_loc{}, lvl, details::to_string_view(fmt),
-                             std::forward<Args>(args)...);
+            log_with_format_(source_loc{}, lvl, fmt, std::forward<Args>(args)...);
         }
     }
-
-    template <typename S, typename = is_convertible_to_sv<S>, typename... Args>
-    void log(source_loc loc, level lvl, S fmt, Args &&...args) {
-        if (should_log(lvl)) {
-            log_with_format_(loc, lvl, fmt, std::forward<Args>(args)...);
-        }
-    }
-
     // log with no format string, just string message
     void log(source_loc loc, level lvl, string_view_t msg) {
         if (should_log(lvl)) {
@@ -109,64 +95,6 @@ public:
         }
     }
 
-#ifdef SPDLOG_SOURCE_LOCATION  // off by default. define SPDLOG_SOURCE_LOCATION before including
-                               // spdlog to enable.
-    template <typename... Args>
-    void trace(loc_with_fmt fmt, Args &&...args) {
-        log(fmt.loc, level::trace, fmt.fmt_string, std::forward<Args>(args)...);
-    }
-
-    template <typename... Args>
-    void debug(loc_with_fmt fmt, Args &&...args) {
-        log(fmt.loc, level::debug, fmt.fmt_string, std::forward<Args>(args)...);
-    }
-
-    template <typename... Args>
-    void info(loc_with_fmt fmt, Args &&...args) {
-        log(fmt.loc, level::info, fmt.fmt_string, std::forward<Args>(args)...);
-    }
-
-    template <typename... Args>
-    void warn(loc_with_fmt fmt, Args &&...args) {
-        log(fmt.loc, level::warn, fmt.fmt_string, std::forward<Args>(args)...);
-    }
-
-    template <typename... Args>
-    void error(loc_with_fmt fmt, Args &&...args) {
-        log(fmt.loc, level::err, fmt.fmt_string, std::forward<Args>(args)...);
-    }
-
-    template <typename... Args>
-    void critical(loc_with_fmt fmt, Args &&...args) {
-        log(fmt.loc, level::critical, fmt.fmt_string, std::forward<Args>(args)...);
-    }
-
-    // log functions with no format string, just string
-
-    void trace(string_view_t msg, source_loc loc = source_loc::current()) {
-        log(loc, level::trace, msg);
-    }
-
-    void debug(string_view_t msg, source_loc loc = source_loc::current()) {
-        log(loc, level::debug, msg);
-    }
-
-    void info(string_view_t msg, source_loc loc = source_loc::current()) {
-        log(loc, level::info, msg);
-    }
-
-    void warn(string_view_t msg, source_loc loc = source_loc::current()) {
-        log(loc, level::warn, msg);
-    }
-
-    void error(string_view_t msg, source_loc loc = source_loc::current()) {
-        log(loc, level::err, msg);
-    }
-
-    void critical(string_view_t msg, source_loc loc = source_loc::current()) {
-        log(loc, level::critical, msg);
-    }
-#else   // without source location
     template <typename... Args>
     void trace(format_string_t<Args...> fmt, Args &&...args) {
         log(level::trace, fmt, std::forward<Args>(args)...);
@@ -204,12 +132,9 @@ public:
     void warn(string_view_t msg) { log(level::warn, msg); }
     void error(string_view_t msg) { log(level::err, msg); }
     void critical(string_view_t msg) { log(level::critical, msg); }
-#endif  // SPDLOG_SOURCE_LOCATION
 
     // return true if logging is enabled for the given level.
-    [[nodiscard]] bool should_log(level msg_level) const {
-        return msg_level >= level_.load(std::memory_order_relaxed);
-    }
+    [[nodiscard]] bool should_log(level msg_level) const { return msg_level >= level_.load(std::memory_order_relaxed); }
 
     // set the level of logging
     void set_level(level level);
@@ -255,17 +180,12 @@ protected:
     // common implementation for after templated public api has been resolved to format string and
     // args
     template <typename... Args>
-    void log_with_format_(source_loc loc, level lvl, string_view_t fmt, Args &&...args) {
+    void log_with_format_(source_loc loc, const level lvl, const format_string_t<Args...> &format_string, Args &&...args) {
         assert(should_log(lvl));
-        SPDLOG_TRY {
-#ifdef SPDLOG_USE_STD_FORMAT
-            auto formatted = std::vformat(fmt, std::make_format_args(args...));
-            sink_it_(details::log_msg(loc, name_, lvl, formatted));
-#else  // use {fmt} lib
+        try {
             memory_buf_t buf;
-            fmt::vformat_to(std::back_inserter(buf), fmt, fmt::make_format_args(args...));
+            fmt::vformat_to(std::back_inserter(buf), format_string, fmt::make_format_args(args...));
             sink_it_(details::log_msg(loc, name_, lvl, string_view_t(buf.data(), buf.size())));
-#endif
         }
         SPDLOG_LOGGER_CATCH(loc)
     }
@@ -275,7 +195,9 @@ protected:
         assert(should_log(msg.log_level));
         for (auto &sink : sinks_) {
             if (sink->should_log(msg.log_level)) {
-                SPDLOG_TRY { sink->log(msg); }
+                try {
+                    sink->log(msg);
+                }
                 SPDLOG_LOGGER_CATCH(msg.source)
             }
         }
@@ -285,7 +207,7 @@ protected:
         }
     }
     virtual void flush_();
-    bool should_flush_(const details::log_msg &msg);
+    [[nodiscard]] bool should_flush_(const details::log_msg &msg) const;
 
     // handle errors during logging.
     // default handler prints the error to stderr at max rate of 1 message/sec.

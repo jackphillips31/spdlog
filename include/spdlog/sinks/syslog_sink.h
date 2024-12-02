@@ -3,14 +3,13 @@
 
 #pragma once
 
+#include <spdlog/details/null_mutex.h>
+#include <spdlog/details/synchronous_factory.h>
+#include <spdlog/sinks/base_sink.h>
 #include <syslog.h>
 
 #include <array>
 #include <string>
-
-#include "../details/null_mutex.h"
-#include "../details/synchronous_factory.h"
-#include "base_sink.h"
 
 namespace spdlog {
 namespace sinks {
@@ -65,13 +64,14 @@ protected:
     //
     // Simply maps spdlog's log level to syslog priority level.
     //
-    int syslog_prio_from_level(const details::log_msg &msg) const {
+    virtual int syslog_prio_from_level(const details::log_msg &msg) const {
         return syslog_levels_.at(static_cast<levels_array::size_type>(msg.log_level));
     }
 
-private:
     using levels_array = std::array<int, 7>;
     levels_array syslog_levels_;
+
+private:
     // must store the ident because the man says openlog might use the pointer as
     // is and not a string copy
     const std::string ident_;
@@ -88,8 +88,8 @@ inline std::shared_ptr<logger> syslog_logger_mt(const std::string &logger_name,
                                                 int syslog_option = 0,
                                                 int syslog_facility = LOG_USER,
                                                 bool enable_formatting = false) {
-    return Factory::template create<sinks::syslog_sink_mt>(logger_name, syslog_ident, syslog_option,
-                                                           syslog_facility, enable_formatting);
+    return Factory::template create<sinks::syslog_sink_mt>(logger_name, syslog_ident, syslog_option, syslog_facility,
+                                                           enable_formatting);
 }
 
 template <typename Factory = spdlog::synchronous_factory>
@@ -98,7 +98,7 @@ inline std::shared_ptr<logger> syslog_logger_st(const std::string &logger_name,
                                                 int syslog_option = 0,
                                                 int syslog_facility = LOG_USER,
                                                 bool enable_formatting = false) {
-    return Factory::template create<sinks::syslog_sink_st>(logger_name, syslog_ident, syslog_option,
-                                                           syslog_facility, enable_formatting);
+    return Factory::template create<sinks::syslog_sink_st>(logger_name, syslog_ident, syslog_option, syslog_facility,
+                                                           enable_formatting);
 }
 }  // namespace spdlog

@@ -1,17 +1,16 @@
 // Copyright(c) 2015-present, Gabi Melman & spdlog contributors.
 // Distributed under the MIT License (http://opensource.org/licenses/MIT)
-#ifdef _WIN32
 
 // clang-format off
 #include "spdlog/details/windows_include.h"
-#include "spdlog/sinks/wincolor_sink.h"
-#include "spdlog/common.h"
 #include <wincon.h>
+#include <mutex>
 // clang-format on
 
-    #include <spdlog/details/null_mutex.h>
+#include "spdlog/sinks/wincolor_sink.h"
 
-    #include <mutex>
+#include "spdlog/common.h"
+#include "spdlog/details/null_mutex.h"
 
 namespace spdlog {
 namespace sinks {
@@ -20,16 +19,13 @@ wincolor_sink<Mutex>::wincolor_sink(void *out_handle, color_mode mode)
     : out_handle_(out_handle) {
     set_color_mode_impl(mode);
     // set level colors
-    colors_.at(level_to_number(level::trace)) =
-        FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;                         // white
-    colors_.at(level_to_number(level::debug)) = FOREGROUND_GREEN | FOREGROUND_BLUE;  // cyan
-    colors_.at(level_to_number(level::info)) = FOREGROUND_GREEN;                     // green
-    colors_.at(level_to_number(level::warn)) =
-        FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY;  // intense yellow
-    colors_.at(level_to_number(level::err)) = FOREGROUND_RED | FOREGROUND_INTENSITY;  // intense red
-    colors_.at(level_to_number(level::critical)) =
-        BACKGROUND_RED | FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE |
-        FOREGROUND_INTENSITY;  // intense white on red background
+    colors_.at(level_to_number(level::trace)) = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;      // white
+    colors_.at(level_to_number(level::debug)) = FOREGROUND_GREEN | FOREGROUND_BLUE;                       // cyan
+    colors_.at(level_to_number(level::info)) = FOREGROUND_GREEN;                                          // green
+    colors_.at(level_to_number(level::warn)) = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY;  // intense yellow
+    colors_.at(level_to_number(level::err)) = FOREGROUND_RED | FOREGROUND_INTENSITY;                      // intense red
+    colors_.at(level_to_number(level::critical)) = BACKGROUND_RED | FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE |
+                                                   FOREGROUND_INTENSITY;  // intense white on red background
     colors_.at(level_to_number(level::off)) = 0;
 }
 
@@ -59,8 +55,7 @@ void wincolor_sink<Mutex>::sink_it_(const details::log_msg &msg) {
         // before color range
         print_range_(formatted, 0, msg.color_range_start);
         // in color range
-        auto orig_attribs =
-            static_cast<WORD>(set_foreground_color_(colors_[static_cast<size_t>(msg.log_level)]));
+        auto orig_attribs = static_cast<WORD>(set_foreground_color_(colors_[static_cast<size_t>(msg.log_level)]));
         print_range_(formatted, msg.color_range_start, msg.color_range_end);
         // reset to orig colors
         ::SetConsoleTextAttribute(static_cast<HANDLE>(out_handle_), orig_attribs);
@@ -105,8 +100,7 @@ std::uint16_t wincolor_sink<Mutex>::set_foreground_color_(std::uint16_t attribs)
 
     // change only the foreground bits (lowest 4 bits)
     auto new_attribs = static_cast<WORD>(attribs) | (orig_buffer_info.wAttributes & 0xfff0);
-    auto ignored =
-        ::SetConsoleTextAttribute(static_cast<HANDLE>(out_handle_), static_cast<WORD>(new_attribs));
+    auto ignored = ::SetConsoleTextAttribute(static_cast<HANDLE>(out_handle_), static_cast<WORD>(new_attribs));
     (void)(ignored);
     return static_cast<std::uint16_t>(orig_buffer_info.wAttributes);  // return orig attribs
 }
@@ -116,8 +110,7 @@ template <typename Mutex>
 void wincolor_sink<Mutex>::print_range_(const memory_buf_t &formatted, size_t start, size_t end) {
     if (end > start) {
         auto size = static_cast<DWORD>(end - start);
-        auto ignored = ::WriteConsoleA(static_cast<HANDLE>(out_handle_), formatted.data() + start,
-                                       size, nullptr, nullptr);
+        auto ignored = ::WriteConsoleA(static_cast<HANDLE>(out_handle_), formatted.data() + start, size, nullptr, nullptr);
         (void)(ignored);
     }
 }
@@ -126,8 +119,7 @@ template <typename Mutex>
 void wincolor_sink<Mutex>::write_to_file_(const memory_buf_t &formatted) {
     auto size = static_cast<DWORD>(formatted.size());
     DWORD bytes_written = 0;
-    auto ignored = ::WriteFile(static_cast<HANDLE>(out_handle_), formatted.data(), size,
-                               &bytes_written, nullptr);
+    auto ignored = ::WriteFile(static_cast<HANDLE>(out_handle_), formatted.data(), size, &bytes_written, nullptr);
     (void)(ignored);
 }
 
@@ -152,5 +144,3 @@ template class SPDLOG_API spdlog::sinks::wincolor_stdout_sink<spdlog::details::n
 
 template class SPDLOG_API spdlog::sinks::wincolor_stderr_sink<std::mutex>;
 template class SPDLOG_API spdlog::sinks::wincolor_stderr_sink<spdlog::details::null_mutex>;
-
-#endif  // _WIN32
